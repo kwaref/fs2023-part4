@@ -11,7 +11,7 @@ morgan.token('postReceivedData', req => {
   return req.method === 'POST' ? JSON.stringify(req.body) : ''
 })
 
-const errorHandler = (error, request, response, next) => {
+const errorHandler = (error, _, response, next) => {
   console.error(error.message)
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
@@ -22,7 +22,7 @@ const errorHandler = (error, request, response, next) => {
   next(error)
 }
 
-const unknownEndpoint = (request, response) => {
+const unknownEndpoint = (_, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
 }
 
@@ -42,17 +42,17 @@ app.use(
   )
 )
 
-app.get('/', (request, response) => {
+app.get('/', (_, response) => {
   response.send('<h1>Hello World!</h1>')
 })
 
-app.get('/info', (request, response) => {
+app.get('/info', (_, response) => {
   Blog.find({}).then(blogs => {
     response.send(`<p>There is info for ${blogs.length} blogs</p><p>${new Date().toString()}</p>`)
   })
 })
 
-app.get('/api/blogs', (request, response) => {
+app.get('/api/blogs', (_, response) => {
   Blog.find({}).then(blogs => {
     response.json(blogs)
   })
