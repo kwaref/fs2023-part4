@@ -30,7 +30,29 @@ const mostBlogs = blogPosts => {
     } else {
       return max
     }
-  }, { author: null, blogs: 0 })
+  }, { author: 'anonymous', blogs: 0 })
+
+  return result
+}
+
+const mostLikes = blogPosts => {
+  if (blogPosts.length === 0) {
+    return
+  }
+  const authorLikes = blogPosts.reduce((likes, post) => {
+    const author = post.author || 'anonymous'
+    const postLikes = post.likes !== undefined ? post.likes : 0
+    likes[author] = (likes[author] || 0) + postLikes
+    return likes
+  }, {})
+
+  const result = Object.entries(authorLikes).reduce((max, [author, totalLikes]) => {
+    if (totalLikes > max.likes) {
+      return { author, likes: totalLikes }
+    } else {
+      return max
+    }
+  }, { author: 'anonymous', likes: 0 })
 
   return result
 }
@@ -40,4 +62,5 @@ module.exports = {
   totalLikes,
   favoriteBlog,
   mostBlogs,
+  mostLikes,
 }
