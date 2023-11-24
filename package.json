@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint ."
+    "deploy": "fly deploy",
+    "lint": "eslint .",
+    "test": "jest --verbose"
   },
   "repository": {
     "type": "git",
@@ -25,10 +26,14 @@
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.10",
     "eslint": "^8.54.0",
+    "jest": "^29.7.0",
     "nodemon": "^3.0.1"
   },
   "bugs": {
     "url": "https://github.com/kwaref/fs2023-part4/issues"
   },
-  "homepage": "https://github.com/kwaref/fs2023-part4#readme"
+  "homepage": "https://github.com/kwaref/fs2023-part4#readme",
+  "jest": {
+    "testEnvironment": "node"
+  }
 }
