@@ -37,7 +37,7 @@ blogsRouter.put('/:id', async (request, response) => {
 
 blogsRouter.post('/', async (request, response) => {
   const body = request.body
-  const { title, author, url } = body
+  const { title, author, url, likes } = body
   if (!title) {
     return response.status(400).json({
       error: 'title is missing',
@@ -58,6 +58,7 @@ blogsRouter.post('/', async (request, response) => {
     title,
     author,
     url,
+    likes: likes ?? 0
   })
 
   const savedBlog = await blog.save()

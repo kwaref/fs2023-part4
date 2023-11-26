@@ -56,6 +56,12 @@ test('a valid blog can be added', async () => {
   expect(titles).toContain(
     'async/await simplifies making async calls'
   )
+  const justAddedBlog = blogsAtEnd[blogsAtEnd.length - 1]
+
+  expect(justAddedBlog.title).toBe(newBlog.title)
+  expect(justAddedBlog.author).toBe(newBlog.author)
+  expect(justAddedBlog.url).toBe(newBlog.url)
+  expect(justAddedBlog.likes).toBe(newBlog.likes)
 })
 
 test('blog without title is not added', async () => {
@@ -108,6 +114,27 @@ test('a blog can be deleted', async () => {
 test('blogs have an id key', async () => {
   const blogsAtStart = await helper.blogsInDb()
   blogsAtStart.forEach(blog => expect(blog.id).toBeDefined())
+})
+
+test('a if a blog witout likes gets its likes set to 0', async () => {
+  const newBlog = {
+    title: 'async/await simplifies making async calls',
+    author: 'Yakov Perelman',
+    url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(201)
+    .expect('Content-Type', /application\/json/)
+
+  const blogsAtEnd= await helper.blogsInDb()
+  expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
+
+  const justAddedBlog = blogsAtEnd[blogsAtEnd.length-1]
+
+  expect(justAddedBlog.likes).toBe(0)
 })
 
 afterAll(async () => {
