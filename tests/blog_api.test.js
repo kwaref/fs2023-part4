@@ -105,6 +105,11 @@ test('a blog can be deleted', async () => {
   expect(titles).not.toContain(blogToDelete.title)
 })
 
+test('blogs have an id key', async () => {
+  const blogsAtStart = await helper.blogsInDb()
+  blogsAtStart.forEach(blog => expect(blog.id).toBeDefined())
+})
+
 afterAll(async () => {
   await mongoose.connection.close()
 })
