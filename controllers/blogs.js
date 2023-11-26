@@ -43,11 +43,11 @@ blogsRouter.post('/', async (request, response) => {
       error: 'title is missing',
     })
   }
-  if (!author) {
-    return response.status(400).json({
-      error: 'author is missing',
-    })
-  }
+  // if (!author) {
+  //   return response.status(400).json({
+  //     error: 'author is missing',
+  //   })
+  // }
   if (!url) {
     return response.status(400).json({
       error: 'url is missing',

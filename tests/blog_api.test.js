@@ -137,6 +137,32 @@ test('a if a blog witout likes gets its likes set to 0', async () => {
   expect(justAddedBlog.likes).toBe(0)
 })
 
+test('if adding a blog without title gets 400 bad request as response', async () => {
+  const newBlog = {
+    author: 'Yakov Perelman',
+    url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+    likes: 5
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(400)
+})
+
+test('if adding a blog without url gets 400 bad request as response', async () => {
+  const newBlog = {
+    title: 'Importance of proteins',
+    author: 'Yakov Perelman',
+    likes: 2
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(400)
+})
+
 afterAll(async () => {
   await mongoose.connection.close()
 })
