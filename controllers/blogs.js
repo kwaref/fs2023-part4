@@ -1,6 +1,5 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
-const User = require('../models/user')
 const jwt = require('jsonwebtoken')
 
 blogsRouter.get('/info', async (_, response) => {
@@ -8,7 +7,7 @@ blogsRouter.get('/info', async (_, response) => {
   response.send(`<p>There is info for ${blogs.length} blogs</p><p>${new Date().toString()}</p>`)
 })
 
-blogsRouter.get('/', async (_, response) => {
+blogsRouter.get('/', async (request, response) => {
   const blogs = await Blog.find({}).populate('user')
   response.json(blogs)
 })
@@ -29,8 +28,11 @@ blogsRouter.delete('/:id', async (request, response) => {
   if (!decodedToken.id) {
     return response.status(401).json({ error: 'token invalid' })
   }
+  if (!blog) {
+    return response.status(404).json({ error: 'blog not found' })
+  }
 
-  if (blog?.user?.toString() !== decodedToken.toString()) {
+  if (blog?.user?.toString() !== request.user._id.toString()) {
     return response.status(401).json({ error: 'unauthorized' })
   }
   await Blog.findByIdAndDelete(request.params.id)
@@ -55,7 +57,8 @@ blogsRouter.post('/', async (request, response) => {
   if (!decodedToken.id) {
     return response.status(401).json({ error: 'token invalid' })
   }
-  const user = await User.findById(decodedToken.id)
+
+  const user = request.user
 
   if (!title) {
     return response.status(400).json({
