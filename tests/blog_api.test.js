@@ -7,26 +7,49 @@ const Blog = require('../models/blog')
 const bcrypt = require('bcrypt')
 const User = require('../models/user')
 
+let token, user
+
 beforeEach(async () => {
   await Blog.deleteMany({})
   await Blog.insertMany(helper.initialBlogs)
+  await User.deleteMany({})
+
+  await api
+    .post('/api/users')
+    .send({
+      username: 'testuser', name: 'User for testing', password: '1234567'
+    })
+
+  const response = await api
+    .post('/api/login')
+    .send({
+      username: 'testuser',
+      password: '1234567',
+    })
+    .expect(200)
+
+  token = response.body.token
+
+  user = await User.findOne({ username: response.body.username })
 })
 
 describe('when there is some blogs saved', () => {
   test('blogs are returned as json', async () => {
+
     await api
       .get('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect('Content-Type', /application\/json/)
   })
 
   test('all blogs are returned', async () => {
-    const response = await api.get('/api/blogs')
+    const response = await api.get('/api/blogs').set('Authorization', `Bearer ${token}`)
     expect(response.body).toHaveLength(helper.initialBlogs.length)
   })
 
   test('a specific blog is within the returned blogs', async () => {
-    const response = await api.get('/api/blogs')
+    const response = await api.get('/api/blogs').set('Authorization', `Bearer ${token}`)
 
     const titles = response.body.map(r => r.title)
     expect(titles).toContain(
@@ -40,14 +63,17 @@ describe('when there is some blogs saved', () => {
   })
 
   test('a if a blog witout likes gets its likes set to 0', async () => {
+
     const newBlog = {
       title: 'async/await simplifies making async calls',
       author: 'Yakov Perelman',
       url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+      user: user.toString()
     }
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
       .send(newBlog)
       .expect(201)
       .expect('Content-Type', /application\/json/)
@@ -67,12 +93,20 @@ describe('viewing a specific blog', () => {
 
     const blogToView = blogsAtStart[0]
 
-    const resultblog = await api
+    const resultBlog = await api
       .get(`/api/blogs/${blogToView.id}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200)
       .expect('Content-Type', /application\/json/)
 
-    expect(resultblog.body).toEqual(blogToView)
+    const received = {
+      title: resultBlog.body.title,
+      author: resultBlog.body.author,
+      url: resultBlog.body.url,
+      likes: resultBlog.body.likes,
+    }
+
+    expect(received).toEqual({ title: blogToView.title, author: blogToView.author, url: blogToView.url, likes: blogToView.likes })
   })
 
   test('fails with statuscode 404 if blog does not exist', async () => {
@@ -80,6 +114,7 @@ describe('viewing a specific blog', () => {
 
     await api
       .get(`/api/blogs/${validNonexistingId}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(404)
   })
 
@@ -88,39 +123,60 @@ describe('viewing a specific blog', () => {
 
     await api
       .get(`/api/blogs/${invalidId}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(400)
   })
 })
 
-describe('adding a new blog', () => {
+describe('adding a new blog with token authentication', () => {
+
   test('a valid blog can be added', async () => {
     const newBlog = {
       title: 'async/await simplifies making async calls',
       author: 'Yakov Perelman',
       url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
-      likes: 3
+      likes: 3,
+    }
+
+    await api
+      .post('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newBlog)
+      .expect(201)
+      .expect('Content-Type', /application\/json/)
+
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
+
+    const titles = blogsAtEnd.map(r => r.title)
+    expect(titles).toContain('async/await simplifies making async calls')
+
+    const justAddedBlog = blogsAtEnd.find(blog => blog.title === newBlog.title)
+
+    expect(justAddedBlog).toBeDefined()
+    expect(justAddedBlog.author).toBe(newBlog.author)
+    expect(justAddedBlog.url).toBe(newBlog.url)
+    expect(justAddedBlog.likes).toBe(newBlog.likes)
+  })
+
+  test('a valid blog can not be added without proper token', async () => {
+    const newBlog = {
+      title: 'async/await simplifies making async calls',
+      author: 'Yakov Perelman',
+      url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
+      likes: 3,
     }
 
     await api
       .post('/api/blogs')
       .send(newBlog)
-      .expect(201)
+      .expect(401)
       .expect('Content-Type', /application\/json/)
 
-    const blogsAtEnd= await helper.blogsInDb()
-    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length + 1)
-
-    const titles = blogsAtEnd.map(r => r.title)
-    expect(titles).toContain(
-      'async/await simplifies making async calls'
-    )
-    const justAddedBlog = blogsAtEnd[blogsAtEnd.length - 1]
-
-    expect(justAddedBlog.title).toBe(newBlog.title)
-    expect(justAddedBlog.author).toBe(newBlog.author)
-    expect(justAddedBlog.url).toBe(newBlog.url)
-    expect(justAddedBlog.likes).toBe(newBlog.likes)
+    const blogsAtEnd = await helper.blogsInDb()
+    expect(blogsAtEnd).toHaveLength(helper.initialBlogs.length)
   })
+
   test('blog without title is not added', async () => {
     const newBlog = {
       important: true
@@ -128,6 +184,7 @@ describe('adding a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
       .send(newBlog)
       .expect(400)
 
@@ -145,6 +202,7 @@ describe('adding a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
       .send(newBlog)
       .expect(400)
   })
@@ -158,6 +216,7 @@ describe('adding a new blog', () => {
 
     await api
       .post('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
       .send(newBlog)
       .expect(400)
   })
@@ -166,22 +225,32 @@ describe('adding a new blog', () => {
 describe('deleting a blog', () => {
 
   test('a blog can be deleted', async () => {
-    const blogsAtStart = await helper.blogsInDb()
-    const blogToDelete = blogsAtStart[0]
+
+    await Blog.deleteMany({})
+
+    const newBlog = {
+      title: 'React patterns',
+      author: 'Michael Chan',
+      url: 'https://reactpatterns.com/',
+      likes: 7,
+    }
+
+    const response = api
+      .post('/api/blogs')
+      .set('Authorization', `Bearer ${token}`)
+      .send(newBlog)
+      .expect(201)
+
+    const id = (await response).body.id
 
     await api
-      .delete(`/api/blogs/${blogToDelete.id}`)
+      .delete(`/api/blogs/${id}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(204)
 
     const blogsAtEnd = await helper.blogsInDb()
 
-    expect(blogsAtEnd).toHaveLength(
-      helper.initialBlogs.length - 1
-    )
-
-    const titles = blogsAtEnd.map(r => r.title)
-
-    expect(titles).not.toContain(blogToDelete.title)
+    expect(blogsAtEnd).toHaveLength(0)
   })
 })
 
@@ -193,6 +262,7 @@ describe('update a blog', () => {
 
     await api
       .put(`/api/blogs/${firstBlog.id}`)
+      .set('Authorization', `Bearer ${token}`)
       .send(newDataBlog).expect(200)
 
     const blogsAtEnd= await helper.blogsInDb()
